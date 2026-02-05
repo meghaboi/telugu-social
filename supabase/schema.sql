@@ -6,6 +6,7 @@ create table if not exists public.profiles (
   city text not null,
   age_range text,
   bio text default '' check (char_length(bio) <= 160),
+  joined_date date not null default current_date,
   created_at timestamptz not null default now()
 );
 
@@ -20,7 +21,7 @@ create table if not exists public.posts (
   id uuid primary key default gen_random_uuid(),
   forum_id uuid not null references public.forums(id) on delete cascade,
   author_id uuid not null references public.profiles(id) on delete cascade,
-  content text not null check (char_length(content) between 1 and 1500),
+  content text not null check (char_length(content) between 1 and 500),
   is_hidden boolean not null default false,
   report_count int not null default 0,
   created_at timestamptz not null default now(),
@@ -31,7 +32,7 @@ create table if not exists public.comments (
   id uuid primary key default gen_random_uuid(),
   post_id uuid not null references public.posts(id) on delete cascade,
   author_id uuid not null references public.profiles(id) on delete cascade,
-  content text not null check (char_length(content) between 1 and 600),
+  content text not null check (char_length(content) between 1 and 500),
   is_hidden boolean not null default false,
   report_count int not null default 0,
   created_at timestamptz not null default now()
@@ -42,7 +43,7 @@ create table if not exists public.reactions (
   user_id uuid not null references public.profiles(id) on delete cascade,
   post_id uuid references public.posts(id) on delete cascade,
   comment_id uuid references public.comments(id) on delete cascade,
-  emoji text not null check (emoji in ('🔥', '😂', '👀', '💀', '❤️')),
+  emoji text not null check (emoji in ('👍', '❤️', '😂', '🔥')),
   created_at timestamptz not null default now(),
   constraint reaction_target_check check (
     (post_id is not null and comment_id is null)
@@ -63,6 +64,22 @@ create table if not exists public.reports (
     (post_id is not null and comment_id is null)
     or (post_id is null and comment_id is not null)
   )
+);
+
+create table if not exists public.user_blocks (
+  id uuid primary key default gen_random_uuid(),
+  blocker_id uuid not null references public.profiles(id) on delete cascade,
+  blocked_id uuid not null references public.profiles(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  unique (blocker_id, blocked_id)
+);
+
+create table if not exists public.user_mutes (
+  id uuid primary key default gen_random_uuid(),
+  muter_id uuid not null references public.profiles(id) on delete cascade,
+  muted_id uuid not null references public.profiles(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  unique (muter_id, muted_id)
 );
 
 create table if not exists public.moderation_events (
