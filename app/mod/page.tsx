@@ -15,6 +15,7 @@ export default async function ModPage() {
       <TopNav />
       <h1 className="mb-4 text-2xl font-semibold">Moderator Dashboard</h1>
       <div className="space-y-3">
+        {!reports.length && <article className="rounded-xl border border-dashed border-white/20 bg-surface p-4 text-muted">No reports pending review.</article>}
         {reports.map((report) => (
           <article key={report.id} className="rounded-xl border border-white/10 bg-surface p-4">
             <p className="text-xs text-muted">{new Date(report.created_at).toLocaleString()} • {report.reason}</p>

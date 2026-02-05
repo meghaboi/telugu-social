@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useToast } from '@/components/toast-provider';
+import { trackEvent } from '@/lib/analytics';
 
 export default function AuthPage() {
   const [phone, setPhone] = useState('+91');
@@ -10,6 +12,7 @@ export default function AuthPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const { pushToast } = useToast();
   const next = useSearchParams().get('next') || '/forum';
 
   async function send() {
@@ -18,7 +21,14 @@ export default function AuthPage() {
     const res = await fetch('/api/auth/send-otp', { method: 'POST', body: JSON.stringify({ phone }) });
     const data = await res.json();
     setLoading(false);
-    if (!res.ok) return setError(data.error || 'Failed to send OTP');
+    if (!res.ok) {
+      const message = data.error || 'Failed to send OTP.';
+      setError(message);
+      pushToast(message, 'error');
+      return;
+    }
+
+    pushToast('OTP sent successfully.');
     setSent(true);
   }
 
@@ -28,7 +38,14 @@ export default function AuthPage() {
     const res = await fetch('/api/auth/verify', { method: 'POST', body: JSON.stringify({ phone, token }) });
     const data = await res.json();
     setLoading(false);
-    if (!res.ok) return setError(data.error || 'Verification failed');
+    if (!res.ok) {
+      const message = data.error || 'Verification failed.';
+      setError(message);
+      pushToast(message, 'error');
+      return;
+    }
+
+    trackEvent('signup_completed', { phone_prefix: '+91' });
     router.push(`/onboarding?next=${encodeURIComponent(next)}`);
   }
 
@@ -37,14 +54,19 @@ export default function AuthPage() {
       <h1 className="text-2xl font-semibold">Sign in with phone OTP</h1>
       <input value={phone} onChange={(e) => setPhone(e.target.value)} className="rounded-lg bg-surface p-3" placeholder="+919876543210" />
       {!sent ? (
-        <button onClick={send} disabled={loading} className="rounded-lg bg-accent p-3 font-medium text-black">{loading ? 'Sending...' : 'Send OTP'}</button>
+        <button onClick={send} disabled={loading} className="rounded-lg bg-accent p-3 font-medium text-black">
+          {loading ? 'Sending...' : 'Send OTP'}
+        </button>
       ) : (
         <>
           <input value={token} onChange={(e) => setToken(e.target.value)} className="rounded-lg bg-surface p-3" placeholder="Enter OTP" />
-          <button onClick={verify} disabled={loading} className="rounded-lg bg-accent p-3 font-medium text-black">{loading ? 'Verifying...' : 'Verify & continue'}</button>
+          <button onClick={verify} disabled={loading} className="rounded-lg bg-accent p-3 font-medium text-black">
+            {loading ? 'Verifying...' : 'Verify & continue'}
+          </button>
         </>
       )}
       {error && <p className="text-sm text-red-400">{error}</p>}
+      <p className="text-xs text-muted">Use +91XXXXXXXXXX format. Invalid phone numbers are rejected before OTP is sent.</p>
     </main>
   );
 }
