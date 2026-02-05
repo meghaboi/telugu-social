@@ -54,7 +54,7 @@ export async function getPost(accessToken: string, postId: string) {
 
 export async function getComments(accessToken: string, postId: string) {
   return restRequest<any[]>(
-    `comments?post_id=eq.${postId}&is_hidden=eq.false&select=id,content,created_at,author_id,profiles!comments_author_id_fkey(username,city)&order=created_at.asc`,
+    `comments?post_id=eq.${postId}&select=id,content,is_hidden,created_at,author_id,profiles!comments_author_id_fkey(username,city)&order=created_at.asc`,
     'GET',
     accessToken
   );

@@ -3,7 +3,9 @@
 import Link from 'next/link';
 import { Badge } from '@/components/badge';
 import { reactions } from '@/lib/constants';
+import { trackEvent } from '@/lib/analytics';
 import { useMemo, useState } from 'react';
+import { useToast } from '@/components/toast-provider';
 
 type Forum = { id: string; name: string; category: string };
 
@@ -12,50 +14,86 @@ type Post = {
   content: string;
   created_at: string;
   updated_at: string;
+  is_hidden?: boolean;
   forum_id: string;
   forums: { name: string; category: string };
   profiles: { username: string; city: string };
 };
 
+const PAGE_SIZE = 20;
+
 export function ForumFeed({ forums, initialPosts, currentSort }: { forums: Forum[]; initialPosts: Post[]; currentSort: 'new' | 'active' }) {
-  const [posts, setPosts] = useState(initialPosts);
+  const [posts] = useState(initialPosts);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [forumId, setForumId] = useState(forums[0]?.id || '');
   const [content, setContent] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [reactionPending, setReactionPending] = useState<Record<string, string | null>>({});
+  const { pushToast } = useToast();
 
-  const sortedPosts = useMemo(() => posts, [posts]);
+  const visiblePosts = useMemo(() => posts.slice(0, visibleCount), [posts, visibleCount]);
+  const hasMore = visibleCount < posts.length;
 
   async function submitPost() {
     setLoading(true);
     setError('');
+    const trimmed = content.trim();
+
     const res = await fetch('/api/posts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ forum_id: forumId, content })
+      body: JSON.stringify({ forum_id: forumId, content: trimmed })
     });
     const data = await res.json();
     setLoading(false);
-    if (!res.ok) return setError(data.error || 'Failed to post');
+
+    if (!res.ok) {
+      const message = data.error || 'Could not publish your post. Please try again.';
+      setError(message);
+      pushToast(message, 'error');
+      return;
+    }
+
+    trackEvent('post_created', { forum_id: forumId });
+    pushToast('Post created successfully.');
+    setContent('');
     window.location.reload();
   }
 
   async function react(postId: string, emoji: string) {
-    setPosts((prev) => [...prev]);
-    await fetch('/api/reactions', {
+    const previous = reactionPending[postId] || null;
+    setReactionPending((prev) => ({ ...prev, [postId]: emoji }));
+
+    const res = await fetch('/api/reactions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ post_id: postId, emoji })
     });
+
+    if (!res.ok) {
+      setReactionPending((prev) => ({ ...prev, [postId]: previous }));
+      pushToast('Could not save your reaction. Check network and retry.', 'error');
+      return;
+    }
+
+    trackEvent('reaction_added', { post_id: postId, emoji });
   }
 
   async function report(postId: string) {
-    await fetch('/api/reports', {
+    const res = await fetch('/api/reports', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ post_id: postId, reason: 'Reported from forum feed' })
     });
-    alert('Reported. Thanks for keeping the forum safe.');
+
+    if (!res.ok) {
+      pushToast('Report failed. Please try again in a moment.', 'error');
+      return;
+    }
+
+    pushToast('Report submitted. Thank you for keeping the community safe.');
+    trackEvent('report_submitted', { post_id: postId });
   }
 
   return (
@@ -63,30 +101,80 @@ export function ForumFeed({ forums, initialPosts, currentSort }: { forums: Forum
       <div className="rounded-2xl border border-white/10 bg-surface p-4">
         <h2 className="mb-3 text-lg font-semibold">Create Post</h2>
         <select value={forumId} onChange={(e) => setForumId(e.target.value)} className="mb-3 w-full rounded-lg bg-black/20 p-3">
-          {forums.map((forum) => <option key={forum.id} value={forum.id}>{forum.category} • {forum.name}</option>)}
+          {forums.map((forum) => (
+            <option key={forum.id} value={forum.id}>
+              {forum.category} • {forum.name}
+            </option>
+          ))}
         </select>
-        <textarea value={content} onChange={(e) => setContent(e.target.value)} className="w-full rounded-lg bg-black/20 p-3" maxLength={500} rows={4} placeholder="Share something with the community..." />
-        <div className="mt-2 flex items-center justify-between text-xs text-muted"><span>{content.length}/500</span><button onClick={submitPost} disabled={loading || !content.trim()} className="rounded-md bg-accent px-3 py-2 font-semibold text-black">{loading ? 'Posting...' : 'Post'}</button></div>
+        <textarea
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          className="w-full rounded-lg bg-black/20 p-3"
+          maxLength={500}
+          rows={4}
+          placeholder="Share something with the community..."
+        />
+        <div className="mt-2 flex items-center justify-between text-xs text-muted">
+          <span>{content.length}/500</span>
+          <button onClick={submitPost} disabled={loading || !content.trim()} className="rounded-md bg-accent px-3 py-2 font-semibold text-black disabled:opacity-50">
+            {loading ? 'Posting...' : 'Post'}
+          </button>
+        </div>
         {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
       </div>
 
       <div className="flex gap-3 text-sm">
-        <Link href="/forum?sort=new" className={currentSort === 'new' ? 'text-accent' : 'text-muted'}>New</Link>
-        <Link href="/forum?sort=active" className={currentSort === 'active' ? 'text-accent' : 'text-muted'}>Active</Link>
+        <Link href="/forum?sort=new" className={currentSort === 'new' ? 'text-accent' : 'text-muted'}>
+          New
+        </Link>
+        <Link href="/forum?sort=active" className={currentSort === 'active' ? 'text-accent' : 'text-muted'}>
+          Active
+        </Link>
       </div>
 
-      {sortedPosts.map((post) => (
+      {!posts.length && (
+        <article className="rounded-2xl border border-dashed border-white/20 bg-surface p-6 text-center text-muted">
+          No posts yet in this forum. Be the first one to start the conversation.
+        </article>
+      )}
+
+      {visiblePosts.map((post) => (
         <article key={post.id} className="rounded-2xl border border-white/10 bg-surface p-4">
-          <div className="mb-2 flex flex-wrap gap-2"><Badge>{post.forums.category}</Badge><Badge>{post.forums.name}</Badge><Badge>{post.profiles.city}</Badge></div>
-          <Link href={`/u/${post.profiles.username}`} className="text-sm text-muted">@{post.profiles.username}</Link>
+          <div className="mb-2 flex flex-wrap gap-2">
+            <Badge>{post.forums.category}</Badge>
+            <Badge>{post.forums.name}</Badge>
+            <Badge>{post.profiles.city}</Badge>
+          </div>
+          <Link href={`/u/${post.profiles.username}`} className="text-sm text-muted">
+            @{post.profiles.username}
+          </Link>
           <p className="mt-2 whitespace-pre-wrap">{post.content}</p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            {reactions.map((emoji) => <button key={emoji} onClick={() => react(post.id, emoji)} className="rounded bg-white/10 px-2 py-1 text-sm">{emoji}</button>)}
-            <Link href={`/forum/${post.id}`} className="text-sm text-muted">Comments</Link>
-            <button onClick={() => report(post.id)} className="text-sm text-red-300">Report</button>
+            {reactions.map((emoji) => (
+              <button
+                key={emoji}
+                onClick={() => react(post.id, emoji)}
+                className={`rounded px-2 py-1 text-sm ${reactionPending[post.id] === emoji ? 'bg-accent text-black' : 'bg-white/10'}`}
+              >
+                {emoji}
+              </button>
+            ))}
+            <Link href={`/forum/${post.id}`} className="text-sm text-muted">
+              Comments
+            </Link>
+            <button onClick={() => report(post.id)} className="text-sm text-red-300">
+              Report
+            </button>
           </div>
         </article>
       ))}
+
+      {hasMore && (
+        <button onClick={() => setVisibleCount((prev) => prev + PAGE_SIZE)} className="w-full rounded-lg border border-white/20 py-2 text-sm text-muted hover:text-white">
+          Load More
+        </button>
+      )}
     </div>
   );
 }

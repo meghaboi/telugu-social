@@ -3,6 +3,7 @@
 import { mvpCities } from '@/lib/constants';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
+import { useToast } from '@/components/toast-provider';
 
 export function OnboardingForm({ userId }: { userId: string }) {
   const [username, setUsername] = useState('');
@@ -12,17 +13,30 @@ export function OnboardingForm({ userId }: { userId: string }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const { pushToast } = useToast();
   const next = useSearchParams().get('next') || '/forum';
 
+  const usernameError =
+    username.length === 0 ? 'Username is required.' : !/^[a-z0-9_]{3,24}$/.test(username) ? 'Use 3-24 chars: lowercase letters, numbers, underscores.' : '';
+
   async function checkUsername(value: string) {
-    setUsername(value);
-    if (value.length < 3) return setAvailability('');
-    const res = await fetch(`/api/profile/check-username?username=${encodeURIComponent(value.toLowerCase())}`);
+    const normalized = value.toLowerCase().trim();
+    setUsername(normalized);
+    setAvailability('');
+
+    if (normalized.length < 3 || !/^[a-z0-9_]{3,24}$/.test(normalized)) return;
+
+    const res = await fetch(`/api/profile/check-username?username=${encodeURIComponent(normalized)}`);
     const data = await res.json();
-    setAvailability(data.available ? '✅ Available' : '❌ Taken');
+    setAvailability(data.available ? '✅ Available' : '❌ Username taken');
   }
 
   async function submit() {
+    if (usernameError) {
+      setError(usernameError);
+      return;
+    }
+
     setLoading(true);
     setError('');
     const res = await fetch('/api/onboarding', {
@@ -32,7 +46,14 @@ export function OnboardingForm({ userId }: { userId: string }) {
     });
     const data = await res.json();
     setLoading(false);
-    if (!res.ok) return setError(data.error || 'Could not save profile');
+    if (!res.ok) {
+      const message = data.error || 'Could not save profile';
+      setError(message);
+      pushToast(message, 'error');
+      return;
+    }
+
+    pushToast('Profile created. Welcome!');
     router.push(next);
   }
 
@@ -42,13 +63,19 @@ export function OnboardingForm({ userId }: { userId: string }) {
       <div>
         <label className="mb-1 block text-sm text-muted">Username</label>
         <input value={username} onChange={(e) => checkUsername(e.target.value)} className="w-full rounded-lg bg-black/20 p-3" maxLength={24} />
-        {availability && <p className="mt-1 text-xs text-muted">{availability}</p>}
+        <div className="mt-1 flex items-center justify-between text-xs">
+          <span className="text-muted">{availability || 'Choose a unique username.'}</span>
+          <span className="text-muted">{username.length}/24</span>
+        </div>
+        {usernameError && <p className="mt-1 text-xs text-red-400">{usernameError}</p>}
       </div>
       <div>
         <label className="mb-1 block text-sm text-muted">City (required)</label>
         <select value={city} onChange={(e) => setCity(e.target.value as (typeof mvpCities)[number])} className="w-full rounded-lg bg-black/20 p-3">
           {mvpCities.map((option) => (
-            <option key={option} value={option}>{option}</option>
+            <option key={option} value={option}>
+              {option}
+            </option>
           ))}
         </select>
       </div>
@@ -62,7 +89,7 @@ export function OnboardingForm({ userId }: { userId: string }) {
           <option value="26+">26+</option>
         </select>
       </div>
-      <button onClick={submit} disabled={loading || !username || availability === '❌ Taken'} className="rounded-lg bg-accent px-4 py-2 font-semibold text-black">
+      <button onClick={submit} disabled={loading || !!usernameError || availability === '❌ Username taken'} className="rounded-lg bg-accent px-4 py-2 font-semibold text-black disabled:opacity-50">
         {loading ? 'Saving...' : 'Continue'}
       </button>
       {error && <p className="text-sm text-red-400">{error}</p>}
