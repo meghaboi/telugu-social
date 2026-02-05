@@ -1,32 +1,33 @@
 # telugu.social MVP
 
-A community-first social platform concept for Telugu Gen Z communities in India and the diaspora.
+This repo now includes the complete MVP core loops:
 
-## Product focus
+- Phone OTP auth (India format)
+- Username onboarding with uniqueness checks
+- Required city + optional age range profile setup
+- Protected forum routes
+- Feed + create post + post detail + comments
+- Reactions, reports, and moderator queue
+- Public profile pages + bio editing
+- New-user post/comment daily rate limits
 
-- Telugu-first community culture (cinema, cities, college life, memes)
-- English-only UI copy for broad accessibility
-- Daily conversations that convert to real-world meetups
-- Safety and meaningful interaction over influencer dynamics
+## Environment variables
 
-## Tech stack
+Create `.env.local` with:
 
-- Next.js (App Router)
-- Tailwind CSS (dark mode first, high-contrast UI)
-- Supabase (Auth, Postgres, Realtime)
-- Vercel deployment target
+```bash
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+```
 
-## Getting started
+## Run
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open `http://localhost:3000`.
+## Notes
 
-## Included in this repository
-
-- UI starter page that captures MVP direction and forum taxonomy
-- Initial Supabase/Postgres schema for auth-linked users, forums, posts, comments, reactions, reports, and moderation events
-- Product plan with success metrics and rollout phases
+- The post detail page refreshes comments every 5s as a lightweight live-update fallback.
+- Database schema updates are in `supabase/schema.sql`.
