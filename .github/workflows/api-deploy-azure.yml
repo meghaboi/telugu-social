@@ -75,6 +75,11 @@ jobs:
             exit 1
           fi
 
+          if [ "$USERNAME" = "REDACTED" ] || [ "$PASSWORD" = "REDACTED" ]; then
+            echo "Publish profile secret appears redacted/invalid. Re-download from Azure Portal for telugusocial-dev-api-1304 and update AZURE_API_PUBLISH_PROFILE."
+            exit 1
+          fi
+
           curl -f -X POST "https://${PUBLISH_URL}/api/zipdeploy" \
             -u "${USERNAME}:${PASSWORD}" \
             -H "Content-Type: application/zip" \
