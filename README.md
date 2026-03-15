@@ -1,42 +1,59 @@
 # telugu.social
 
-An invite-only React Native app for the most happening events in Hyderabad.
+Invite-only Hyderabad events platform with real-friend connections and IRL participation.
 
-No followers. No vanity metrics. Real friends, real plans, real-world experiences.
+## Product scope
 
-## Vision
+- Mobile app (React Native, Android + iOS): user experience.
+- Web app (browser): admin dashboard + organizer dashboard.
+- Single Azure-first backend for all clients.
 
-`telugu.social` helps people discover and attend IRL events with trusted circles, while also creating social impact through volunteer drives.
+## Core user profile and auth
 
-## Product principles
+- Number-based signup/login (OTP).
+- Profile fields:
+  - Name
+  - Username
+  - Profile picture
+  - Pronouns
+  - Description/bio
 
-- Invite-only network with strong trust and quality.
-- Friends graph, not follower graph.
-- Events are identity: each attended event becomes a profile badge.
-- Local-first focus on Hyderabad.
-- Minimalist visual system: black, white, ash/grey with bold typography.
+## Event platform scope
 
-## Core features (MVP direction)
-
-- Invite system: each user can invite up to 5 people to join.
-- Friend network: see what events your friends are attending.
-- Event badges: every event participation adds a badge to profile history.
-- Volunteer drives: join social-cause events and earn volunteer badges.
-- Amateur event creation: community members can create their own events.
-- Verified events:
-  - Ticket booking
+- Event feed personalized by location, friends, and relevance.
+- Event host updates (active announcement timeline per event).
+- Amateur event hosting and discovery.
+- Verified event submission, review workflow, and approval.
+- Verified events with:
   - Applications
-  - Fee/payment flow
-  - Event updates in-app
-  - Media uploads (photos and videos)
+  - Payments
+  - Ticketing
+- Badge-first identity: event participation reflected on profile.
+- Invite-only growth model: each user can invite up to 5 users.
 
-## Tech direction
+## Dashboards
 
-- Mobile app: React Native (single codebase for Android and iOS).
-- Initial scope: product architecture, flows, and design system reset from scratch.
+- `Admin Dashboard` (web):
+  - User moderation
+  - Verified event approvals
+  - Platform operations
+- `Organizer Dashboard` (web):
+  - Event creation and management
+  - Applications and ticket operations
+  - Host updates and media
+- `User Dashboard` (mobile):
+  - Feed, profile, events, badges, invites
 
-## Repository status
+## UI direction
 
-This repository has been intentionally reset to restart implementation around the new product vision.
+- Minimal, modern palette: black, white, ash/grey.
+- Bold typography and clear hierarchy.
+- Mobile-first interaction language.
 
-See [DESIGN.md](./DESIGN.md) for the simple design and architecture doc.
+## Delivery stages
+
+See [docs/STAGES.md](./docs/STAGES.md).
+
+## Azure-first architecture
+
+See [docs/AZURE-ARCHITECTURE.md](./docs/AZURE-ARCHITECTURE.md) and provisioning script at [infra/azure/provision.ps1](./infra/azure/provision.ps1).
