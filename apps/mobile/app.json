@@ -7,13 +7,22 @@
     "splash": {
       "backgroundColor": "#000000"
     },
-    "platforms": ["android", "ios"],
+    "platforms": [
+      "android",
+      "ios"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.telugusocial.app"
     },
     "android": {
       "package": "com.telugusocial.app"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "a1241a88-a3a8-426b-bfe9-a410c03f0459"
+      }
+    },
+    "owner": "meghaboi"
   }
 }

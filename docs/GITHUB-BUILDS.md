@@ -43,12 +43,11 @@ Workflow: `.github/workflows/api-deploy-azure.yml`
 
 Required GitHub secrets:
 
-- `AZURE_API_APP_NAME`: your App Service name (example: `telugusocial-dev-api-1304`)
 - `AZURE_API_PUBLISH_PROFILE`: publish profile XML from Azure App Service -> Get publish profile
 
 How to run:
 
-1. Add both secrets in GitHub repo settings.
+1. Add the publish profile secret in GitHub repo settings.
 2. Push to `main` (or run workflow manually).
 3. Workflow builds `apps/api`, packages production dependencies, and deploys ZIP to App Service.
 

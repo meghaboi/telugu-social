@@ -18,6 +18,10 @@ on:
       - "apps/mobile/**"
       - ".github/workflows/mobile-android-build.yml"
 
+concurrency:
+  group: mobile-android-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-android:
     runs-on: ubuntu-latest
@@ -47,4 +51,5 @@ jobs:
         run: |
           PROFILE="${{ github.event.inputs.profile }}"
           if [ -z "$PROFILE" ]; then PROFILE="preview"; fi
+          eas config --non-interactive
           eas build --platform android --profile "$PROFILE" --non-interactive --wait

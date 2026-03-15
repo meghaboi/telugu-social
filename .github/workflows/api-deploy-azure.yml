@@ -9,6 +9,10 @@ on:
       - "apps/api/**"
       - ".github/workflows/api-deploy-azure.yml"
 
+concurrency:
+  group: api-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -47,6 +51,6 @@ jobs:
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
-          app-name: ${{ secrets.AZURE_API_APP_NAME }}
+          app-name: telugusocial-dev-api-1304
           publish-profile: ${{ secrets.AZURE_API_PUBLISH_PROFILE }}
           package: deploy/api-release.zip
