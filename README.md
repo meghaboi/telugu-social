@@ -1,33 +1,42 @@
-# telugu.social MVP
+# telugu.social
 
-This repo now includes the complete MVP core loops:
+An invite-only React Native app for the most happening events in Hyderabad.
 
-- Phone OTP auth (India format)
-- Username onboarding with uniqueness checks
-- Required city + optional age range profile setup
-- Protected forum routes
-- Feed + create post + post detail + comments
-- Reactions, reports, and moderator queue
-- Public profile pages + bio editing
-- New-user post/comment daily rate limits
+No followers. No vanity metrics. Real friends, real plans, real-world experiences.
 
-## Environment variables
+## Vision
 
-Create `.env.local` with:
+`telugu.social` helps people discover and attend IRL events with trusted circles, while also creating social impact through volunteer drives.
 
-```bash
-NEXT_PUBLIC_SUPABASE_URL=...
-NEXT_PUBLIC_SUPABASE_ANON_KEY=...
-```
+## Product principles
 
-## Run
+- Invite-only network with strong trust and quality.
+- Friends graph, not follower graph.
+- Events are identity: each attended event becomes a profile badge.
+- Local-first focus on Hyderabad.
+- Minimalist visual system: black, white, ash/grey with bold typography.
 
-```bash
-npm install
-npm run dev
-```
+## Core features (MVP direction)
 
-## Notes
+- Invite system: each user can invite up to 5 people to join.
+- Friend network: see what events your friends are attending.
+- Event badges: every event participation adds a badge to profile history.
+- Volunteer drives: join social-cause events and earn volunteer badges.
+- Amateur event creation: community members can create their own events.
+- Verified events:
+  - Ticket booking
+  - Applications
+  - Fee/payment flow
+  - Event updates in-app
+  - Media uploads (photos and videos)
 
-- The post detail page refreshes comments every 5s as a lightweight live-update fallback.
-- Database schema updates are in `supabase/schema.sql`.
+## Tech direction
+
+- Mobile app: React Native (single codebase for Android and iOS).
+- Initial scope: product architecture, flows, and design system reset from scratch.
+
+## Repository status
+
+This repository has been intentionally reset to restart implementation around the new product vision.
+
+See [DESIGN.md](./DESIGN.md) for the simple design and architecture doc.
