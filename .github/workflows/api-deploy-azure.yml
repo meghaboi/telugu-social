@@ -48,9 +48,34 @@ jobs:
           cd deploy/api
           zip -r ../api-release.zip .
 
-      - name: Deploy to Azure Web App
-        uses: azure/webapps-deploy@v3
-        with:
-          app-name: telugusocial-dev-api-1304
-          publish-profile: ${{ secrets.AZURE_API_PUBLISH_PROFILE }}
-          package: deploy/api-release.zip
+      - name: Deploy to Azure ZipDeploy
+        shell: bash
+        env:
+          AZURE_API_PUBLISH_PROFILE: ${{ secrets.AZURE_API_PUBLISH_PROFILE }}
+        run: |
+          if [ -z "$AZURE_API_PUBLISH_PROFILE" ]; then
+            echo "AZURE_API_PUBLISH_PROFILE secret is missing"
+            exit 1
+          fi
+
+          echo "$AZURE_API_PUBLISH_PROFILE" > publish-profile.xml
+
+          ZIP_PROFILE=$(grep -o 'publishMethod="ZipDeploy"[^>]*' publish-profile.xml || true)
+          if [ -z "$ZIP_PROFILE" ]; then
+            echo "ZipDeploy profile not found in publish profile XML"
+            exit 1
+          fi
+
+          PUBLISH_URL=$(echo "$ZIP_PROFILE" | sed -E 's/.*publishUrl="([^"]+)".*/\1/')
+          USERNAME=$(echo "$ZIP_PROFILE" | sed -E 's/.*userName="([^"]+)".*/\1/')
+          PASSWORD=$(echo "$ZIP_PROFILE" | sed -E 's/.*userPWD="([^"]+)".*/\1/')
+
+          if [ -z "$PUBLISH_URL" ] || [ -z "$USERNAME" ] || [ -z "$PASSWORD" ]; then
+            echo "Failed to parse publish profile credentials"
+            exit 1
+          fi
+
+          curl -f -X POST "https://${PUBLISH_URL}/api/zipdeploy" \
+            -u "${USERNAME}:${PASSWORD}" \
+            -H "Content-Type: application/zip" \
+            --data-binary "@deploy/api-release.zip"

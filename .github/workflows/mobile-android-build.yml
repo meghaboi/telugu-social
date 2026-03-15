@@ -25,6 +25,8 @@ concurrency:
 jobs:
   build-android:
     runs-on: ubuntu-latest
+    env:
+      EAS_BUILD_PROFILE: ${{ github.event.inputs.profile || 'preview' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -49,7 +51,4 @@ jobs:
       - name: EAS build Android
         working-directory: apps/mobile
         run: |
-          PROFILE="${{ github.event.inputs.profile }}"
-          if [ -z "$PROFILE" ]; then PROFILE="preview"; fi
-          eas config --non-interactive
-          eas build --platform android --profile "$PROFILE" --non-interactive --wait
+          eas build --platform android --profile "$EAS_BUILD_PROFILE" --non-interactive --wait
