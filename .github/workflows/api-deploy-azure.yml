@@ -1,0 +1,52 @@
+name: API Deploy Azure
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "apps/api/**"
+      - ".github/workflows/api-deploy-azure.yml"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build API
+        run: npm --workspace @telugu-social/api run build
+
+      - name: Prepare deploy package
+        run: |
+          mkdir -p deploy/api
+          cp apps/api/package.json deploy/api/package.json
+          cp -r apps/api/dist deploy/api/dist
+
+      - name: Install prod dependencies
+        run: npm install --omit=dev
+        working-directory: deploy/api
+
+      - name: Zip artifact
+        run: |
+          cd deploy/api
+          zip -r ../api-release.zip .
+
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ secrets.AZURE_API_APP_NAME }}
+          publish-profile: ${{ secrets.AZURE_API_PUBLISH_PROFILE }}
+          package: deploy/api-release.zip

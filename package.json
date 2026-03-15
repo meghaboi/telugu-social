@@ -1,0 +1,14 @@
+{
+  "name": "telugu-social",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:api": "npm --workspace @telugu-social/api run dev",
+    "dev:mobile": "npm --workspace @telugu-social/mobile run start",
+    "typecheck": "npm -ws run typecheck"
+  }
+}

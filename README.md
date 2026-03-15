@@ -2,6 +2,24 @@
 
 Invite-only Hyderabad events platform with real-friend connections and IRL participation.
 
+## Current implementation
+
+- Stage 1: implemented (API + mobile shell)
+  - OTP request/verify (dev OTP flow)
+  - Invite-only onboarding with invite cap (5)
+  - Profile setup/edit (name, username, picture, pronouns, description)
+  - Moderation report hook
+- Stage 2: implemented (API + mobile shell)
+  - Personalized feed (city + friend signals + relevance)
+  - Event detail with host updates timeline
+  - RSVP intent (going/interested/not_going)
+  - Search + type filters
+
+## Monorepo structure
+
+- `apps/api`: Node.js + TypeScript API
+- `apps/mobile`: React Native (Expo) app shell for Stage 1/2 flows
+
 ## Product scope
 
 - Mobile app (React Native, Android + iOS): user experience.
@@ -54,6 +72,35 @@ Invite-only Hyderabad events platform with real-friend connections and IRL parti
 
 See [docs/STAGES.md](./docs/STAGES.md).
 
+## Local development
+
+1. Install dependencies:
+   - `npm install`
+2. Start API:
+   - `npm run dev:api`
+3. Start mobile app (new terminal):
+   - `npm run dev:mobile`
+
+Default API URL is `http://localhost:4000` and can be edited in the mobile app login screen.
+
+## Stage 1/2 API endpoints
+
+- `POST /auth/request-otp`
+- `POST /auth/verify-otp`
+- `GET /me`
+- `PUT /me`
+- `GET /invites`
+- `POST /invites`
+- `POST /moderation/report`
+- `GET /feed`
+- `GET /events/search`
+- `GET /events/:eventId`
+- `POST /events/:eventId/rsvp`
+
 ## Azure-first architecture
 
 See [docs/AZURE-ARCHITECTURE.md](./docs/AZURE-ARCHITECTURE.md) and provisioning script at [infra/azure/provision.ps1](./infra/azure/provision.ps1).
+
+## CI/CD
+
+GitHub build/deploy setup is documented in [docs/GITHUB-BUILDS.md](./docs/GITHUB-BUILDS.md).

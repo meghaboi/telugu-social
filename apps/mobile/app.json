@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "telugu.social",
+    "slug": "telugu-social",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "splash": {
+      "backgroundColor": "#000000"
+    },
+    "platforms": ["android", "ios"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.telugusocial.app"
+    },
+    "android": {
+      "package": "com.telugusocial.app"
+    }
+  }
+}
