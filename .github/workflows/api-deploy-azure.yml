@@ -30,6 +30,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Run API tests
+        run: npm --workspace @telugu-social/api run test
+
       - name: Build API
         run: npm --workspace @telugu-social/api run build
 
@@ -84,3 +87,29 @@ jobs:
             -u "${USERNAME}:${PASSWORD}" \
             -H "Content-Type: application/zip" \
             --data-binary "@deploy/api-release.zip"
+
+      - name: Verify deployed health endpoint
+        shell: bash
+        env:
+          AZURE_API_PUBLISH_PROFILE: ${{ secrets.AZURE_API_PUBLISH_PROFILE }}
+        run: |
+          echo "$AZURE_API_PUBLISH_PROFILE" > publish-profile.xml
+          ZIP_PROFILE=$(grep -o 'publishMethod="ZipDeploy"[^>]*' publish-profile.xml || true)
+          PUBLISH_URL=$(echo "$ZIP_PROFILE" | sed -E 's/.*publishUrl="([^"]+)".*/\1/')
+          APP_HOST=$(echo "$PUBLISH_URL" | sed -E 's/\.scm\./\./' | sed -E 's/:.*$//')
+
+          if [ -z "$APP_HOST" ]; then
+            echo "Could not derive app host from publish profile"
+            exit 1
+          fi
+
+          for i in {1..20}; do
+            if curl -fsS "https://${APP_HOST}/health" >/dev/null; then
+              echo "Health check passed on attempt $i"
+              exit 0
+            fi
+            sleep 5
+          done
+
+          echo "Health check failed for https://${APP_HOST}/health"
+          exit 1

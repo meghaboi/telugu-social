@@ -13,6 +13,7 @@ Checks:
 
 - `npm ci`
 - `npm run typecheck` (all workspaces)
+- `npm --workspace @telugu-social/api run test`
 - API build (`apps/api`)
 
 ## 1) Android build (Expo EAS)
@@ -43,21 +44,34 @@ Workflow: `.github/workflows/api-deploy-azure.yml`
 
 Required GitHub secrets:
 
-- `AZURE_API_PUBLISH_PROFILE`: publish profile XML from Azure App Service -> Get publish profile
+- `AZURE_API_PUBLISH_PROFILE`: publish profile XML from Azure App Service -> Get publish profile.
+
+Deploy behavior:
+
+- Runs API tests before packaging.
+- Builds API and creates ZIP artifact.
+- ZipDeploy to Azure App Service.
+- Runs post-deploy `/health` verification against the public app hostname.
 
 How to run:
 
 1. Add the publish profile secret in GitHub repo settings.
 2. Push to `main` (or run workflow manually).
-3. Workflow builds `apps/api`, packages production dependencies, and deploys ZIP to App Service.
 
-## 3) Recommended Azure App Settings
+## 3) Required Azure App Settings (API)
 
 In the API App Service configuration:
 
+- `linuxFxVersion=NODE|20-lts` (runtime stack)
 - `NODE_ENV=production`
-- `PORT=8080` (App Service default is fine if not set)
+- `DATABASE_URL=<postgres connection string>`
+- `DATABASE_SSL=true` (Azure PostgreSQL default)
+- `PORT=8080` (optional; App Service usually injects this)
 - `WEBSITES_PORT=8080` (optional)
+
+Optional local/dev fallback:
+
+- `USE_IN_MEMORY_STORE=true` to force non-persistent in-memory mode.
 
 Startup command:
 

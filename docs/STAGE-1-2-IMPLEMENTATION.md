@@ -1,28 +1,58 @@
-# Stage 1 and Stage 2 Implementation
+# Stage 1 Implementation (Open Access Onboarding and Identity)
 
 ## Scope delivered
 
-### Stage 1 (Identity + Profile)
-
-- Invite-gated OTP onboarding with dev OTP simulation.
-- User profile fields:
+- Open-access OTP onboarding with development OTP simulation.
+- Profile setup fields aligned to Stage 1:
   - name
-  - username (unique)
-  - profile picture URL
-  - pronouns
-  - description
-- Invite cap flow (5 invites per user).
-- Moderation intake hook (`/moderation/report`).
+  - DOB (14+ validation enforced)
+  - optional profile photo URL
+  - interests (minimum 3 unique)
+  - neighbourhood
+- Hyderabad school index search + self-reported school selection.
+- Terms acceptance capture with policy version tracking.
+- In-app notification centre foundation:
+  - list notifications
+  - mark one as read
+  - mark all as read
+- Theme preference support (`system`, `light`, `dark`) for dark mode parity from day one.
 
-### Stage 2 (Feed + Event Detail)
+## API contracts
 
-- Personalized feed endpoint sorted by friend RSVP signal then event time.
-- Event detail endpoint with host update timeline and RSVP summary.
-- RSVP intent endpoint (`going`, `interested`, `not_going`).
-- Search endpoint with query/type/city filters.
+- `GET /health`
+- `GET /terms/current`
+- `POST /auth/request-otp`
+- `POST /auth/verify-otp`
+- `GET /me`
+- `PUT /me/onboarding`
+- `PUT /me/theme`
+- `GET /schools`
+- `GET /notifications`
+- `POST /notifications/read-all`
+- `POST /notifications/:notificationId/read`
+
+## Persistence and deployment behavior
+
+- API now supports PostgreSQL-backed persistence via `DATABASE_URL`.
+- School index + required Stage 1 tables auto-bootstrap at startup.
+- If `DATABASE_URL` is not configured, API falls back to in-memory mode.
+- `USE_IN_MEMORY_STORE=true` forces in-memory mode explicitly.
+
+## Mobile shell coverage
+
+- OTP sign-in screen
+- Onboarding completion screen (all required fields + terms)
+- School search and selection UI
+- Theme toggle UI (system/light/dark)
+- Notification centre screen after onboarding completion
+
+## Validation
+
+- Automated API tests added with Vitest + Supertest (`apps/api/tests/stage1-api.test.ts`).
+- CI now runs typecheck + API tests + API build on each push/PR.
+- Azure deploy workflow now runs API tests pre-deploy and health-check post-deploy.
 
 ## Notes
 
-- This pass uses in-memory stores for rapid iteration and validation.
-- It is intentionally designed so data repositories can be swapped with PostgreSQL/Redis/Service Bus in the next stage.
-- OTP is in development mode and returns `devOtp` in response.
+- OTP remains in development mode and returns `devOtp` in response.
+- ACS OTP delivery, abuse controls, and production-grade auth hardening remain later-stage rollout work.

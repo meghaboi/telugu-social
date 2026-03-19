@@ -17,33 +17,25 @@
   - Azure Static Web Apps or Azure App Service (for dashboard frontend)
 
 - `API layer`
-  - Azure API Management (optional early, recommended before scale)
-  - Azure App Service (Node.js API) or Azure Container Apps for backend services
+  - Azure App Service (Node.js Stage 1 API)
+  - Optional Azure API Management before scale
 
 - `Identity and auth`
-  - Azure Communication Services (OTP SMS delivery)
-  - OTP service in backend
-  - JWT access/refresh tokens
-  - Role-based access control (`user`, `organizer`, `admin`)
+  - OTP service in backend (Stage 1 currently dev OTP mode)
+  - Session token model for Stage 1
 
 - `Data and storage`
-  - Azure Database for PostgreSQL Flexible Server
-  - Azure Cache for Redis (feed cache, OTP throttling, session helpers)
-  - Azure Blob Storage (profile pictures, event photos/videos)
+  - Azure Database for PostgreSQL Flexible Server (primary Stage 1 persistence)
+  - Azure Cache for Redis (later optimization)
+  - Azure Blob Storage (profile pictures/media in later stages)
 
 - `Async and realtime`
-  - Azure Service Bus (event pipelines, moderation jobs)
-  - Azure Functions (background workers, badge issuance, notifications)
-  - Azure Web PubSub (host live updates, realtime status)
-
-- `Payments`
-  - Payment provider integration through backend (gateway-agnostic abstraction)
-  - Secure webhook handlers on backend
+  - Azure Service Bus, Functions, and Web PubSub for later stages
 
 - `Observability and ops`
   - Azure Monitor + Application Insights + Log Analytics
-  - Key Vault for secrets and connection strings
-  - Azure DevOps or GitHub Actions for CI/CD
+  - Key Vault for secrets
+  - GitHub Actions for CI/CD
 
 ## Environment model
 
@@ -53,23 +45,26 @@
 
 Use separate resource groups and isolated secrets per environment.
 
-## Service mapping to feature areas
+## Stage 1 API persistence model (PostgreSQL)
 
-- Auth/profile/invites: API + PostgreSQL + Redis + ACS
-- Event feed and discovery: API + PostgreSQL + Redis
-- Host updates and notifications: Service Bus + Functions + Web PubSub
-- Event media: Blob Storage + CDN path
-- Verified flows/review: API + Dashboard + workflow queues
-- Payments/applications: API + provider integration + audit logs
+Current Stage 1 API can auto-bootstrap these tables:
+
+- `schools`
+- `users`
+- `user_interests`
+- `otp_requests`
+- `sessions`
+- `notifications`
+
+School index seed data is inserted/updated at startup.
 
 ## Security baseline
 
 - All secrets in Key Vault.
 - Private networking where possible for database/cache.
 - WAF at edge.
-- Signed URLs for media upload/download.
-- Rate limits for OTP and auth endpoints.
-- Auditable admin/organizer actions.
+- Rate limits for OTP/auth endpoints.
+- Audit logs for sensitive admin operations in later stages.
 
 ## First provisioning targets
 
