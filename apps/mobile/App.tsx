@@ -46,9 +46,107 @@ type InAppNotification = {
   id: string;
   title: string;
   body: string;
-  category: "system" | "onboarding";
+  category: "system" | "onboarding" | "social" | "event_update" | "event_reminder" | "payment";
   readAt: string | null;
   createdAt: string;
+};
+
+type PulseSections = {
+  spotlight: Array<{
+    id: string;
+    title: string;
+    category: string;
+    area: string;
+    startsAt: string;
+    priceLabel: string;
+    friendsGoingCount: number;
+  }>;
+  friendsGoing: Array<{
+    eventId: string;
+    eventTitle: string;
+    eventArea: string;
+    startsAt: string;
+    friendUserId: string;
+    friendName: string;
+    friendProfilePhoto: string;
+  }>;
+  thisWeek: Array<{
+    id: string;
+    title: string;
+    category: string;
+    area: string;
+    startsAt: string;
+    priceLabel: string;
+  }>;
+};
+
+type EventItem = {
+  id: string;
+  organiserId: string;
+  title: string;
+  description: string;
+  category: string;
+  area: string;
+  venue: string;
+  startsAt: string;
+  endsAt: string;
+  priceCents: number;
+  currency: "INR";
+  maxAttendees: number;
+  applicationClosed: boolean;
+  createdAt: string;
+  priceLabel: string;
+};
+
+type EventDetail = {
+  event: EventItem;
+  organiser: {
+    id: string;
+    name: string;
+    tagline: string;
+    verified: boolean;
+  } | null;
+  updates: Array<{
+    id: string;
+    title: string;
+    body: string;
+    createdAt: string;
+  }>;
+  friendsAttending: Array<{
+    id: string;
+    name: string;
+    profilePhoto: string;
+  }>;
+  friendsAttendingCount: number;
+  application: {
+    id: string;
+    status: string;
+    ticketId: string | null;
+  } | null;
+};
+
+type FriendUser = {
+  id: string;
+  name: string;
+  profilePhoto: string;
+  school: School | null;
+};
+
+type FriendRequest = {
+  id: string;
+  fromUserId: string;
+  toUserId: string;
+  status: string;
+  createdAt: string;
+};
+
+type DiscoverUser = {
+  id: string;
+  name: string;
+  profilePhoto: string;
+  schoolName: string;
+  friendshipStatus: "self" | "friend" | "public";
+  pendingRequestDirection: "incoming" | "outgoing" | null;
 };
 
 type TermsInfo = {
@@ -156,6 +254,17 @@ function AppScreen() {
   const [termsInfo, setTermsInfo] = useState<TermsInfo | null>(null);
   const [notifications, setNotifications] = useState<InAppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [activeTab, setActiveTab] = useState<"pulse" | "events" | "friends" | "inbox">("pulse");
+  const [pulseSections, setPulseSections] = useState<PulseSections | null>(null);
+  const [events, setEvents] = useState<EventItem[]>([]);
+  const [selectedEvent, setSelectedEvent] = useState<EventDetail | null>(null);
+  const [friends, setFriends] = useState<FriendUser[]>([]);
+  const [incomingRequests, setIncomingRequests] = useState<FriendRequest[]>([]);
+  const [outgoingRequests, setOutgoingRequests] = useState<FriendRequest[]>([]);
+  const [discoverQuery, setDiscoverQuery] = useState("");
+  const [discoverUsers, setDiscoverUsers] = useState<DiscoverUser[]>([]);
+  const [applicationName, setApplicationName] = useState("");
+  const [applicationEmail, setApplicationEmail] = useState("");
 
   const [themePreference, setThemePreference] = useState<ThemePreference>("system");
   const [isLoading, setIsLoading] = useState(false);
@@ -174,9 +283,24 @@ function AppScreen() {
     void loadTerms();
   }, [apiBase]);
 
+  useEffect(() => {
+    if (!accessToken || onboardingRequired) {
+      return;
+    }
+
+    void Promise.all([
+      loadPulse(),
+      loadEvents(),
+      loadFriends(),
+      loadFriendRequests(),
+      loadNotifications(),
+    ]);
+  }, [accessToken, onboardingRequired]);
+
   function hydrateFromUser(nextUser: User) {
     setUser(nextUser);
     setName(nextUser.name);
+    setApplicationName(nextUser.name);
     setDob(nextUser.dob ?? "2008-01-01");
     setProfilePhoto(nextUser.profilePhoto ?? "");
     setNeighbourhood(nextUser.neighbourhood ?? "");
@@ -184,6 +308,7 @@ function AppScreen() {
     setSelectedSchool(nextUser.school ?? null);
     setThemePreference(nextUser.themePreference ?? "system");
     setTermsAccepted(Boolean(nextUser.termsAcceptance));
+    setApplicationEmail(`${nextUser.id}@telugu.social`);
   }
 
   function apiErrorMessage(data: unknown, fallback: string) {
@@ -367,6 +492,180 @@ function AppScreen() {
 
     setNotifications((data.notifications as InAppNotification[]) ?? []);
     setUnreadCount((data.unreadCount as number) ?? 0);
+  }
+
+  async function loadPulse() {
+    const response = await fetch(`${apiBase}/pulse`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(apiErrorMessage(data, "Failed to load Pulse"));
+    }
+    setPulseSections(data.sections as PulseSections);
+  }
+
+  async function loadEvents(category?: string) {
+    const params = new URLSearchParams();
+    if (category) {
+      params.set("category", category);
+    }
+
+    const response = await fetch(`${apiBase}/events?${params.toString()}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(apiErrorMessage(data, "Failed to load events"));
+    }
+    setEvents((data.events as EventItem[]) ?? []);
+  }
+
+  async function loadEventDetail(eventId: string) {
+    const response = await fetch(`${apiBase}/events/${eventId}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(apiErrorMessage(data, "Failed to load event detail"));
+    }
+    setSelectedEvent(data as EventDetail);
+  }
+
+  async function loadFriends() {
+    const response = await fetch(`${apiBase}/friends`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(apiErrorMessage(data, "Failed to load friends"));
+    }
+    setFriends((data.friends as FriendUser[]) ?? []);
+  }
+
+  async function loadFriendRequests() {
+    const response = await fetch(`${apiBase}/friends/requests`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(apiErrorMessage(data, "Failed to load friend requests"));
+    }
+    setIncomingRequests((data.incoming as FriendRequest[]) ?? []);
+    setOutgoingRequests((data.outgoing as FriendRequest[]) ?? []);
+  }
+
+  async function searchPeople() {
+    const params = new URLSearchParams();
+    params.set("query", discoverQuery);
+    const response = await fetch(`${apiBase}/users/discover?${params.toString()}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(apiErrorMessage(data, "Failed to search users"));
+    }
+    setDiscoverUsers((data.users as DiscoverUser[]) ?? []);
+  }
+
+  async function sendFriendRequest(targetUserId: string) {
+    const response = await fetch(`${apiBase}/friends/requests`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ targetUserId }),
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(apiErrorMessage(data, "Failed to send friend request"));
+    }
+
+    await loadFriendRequests();
+    await searchPeople();
+  }
+
+  async function respondToFriendRequest(requestId: string, action: "accept" | "reject") {
+    const response = await fetch(`${apiBase}/friends/requests/${requestId}/respond`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ action }),
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(apiErrorMessage(data, "Failed to respond to friend request"));
+    }
+
+    await Promise.all([loadFriendRequests(), loadFriends(), loadPulse()]);
+  }
+
+  async function startApplication(eventId: string) {
+    setIsLoading(true);
+    try {
+      const startResponse = await fetch(`${apiBase}/events/${eventId}/applications/start`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const startData = await startResponse.json();
+      if (!startResponse.ok) {
+        throw new Error(apiErrorMessage(startData, "Failed to start application"));
+      }
+
+      const applicationId = startData.application.id as string;
+
+      const detailsResponse = await fetch(`${apiBase}/applications/${applicationId}/details`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          fullName: applicationName || user?.name || "User",
+          email: applicationEmail || `${user?.id}@telugu.social`,
+          phone: user?.phone ?? phone,
+          answers: {
+            note: "Applied from the mobile shell",
+          },
+        }),
+      });
+      const detailsData = await detailsResponse.json();
+      if (!detailsResponse.ok) {
+        throw new Error(apiErrorMessage(detailsData, "Failed to save application details"));
+      }
+
+      const paymentIntentResponse = await fetch(`${apiBase}/applications/${applicationId}/payment-intent`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const paymentIntentData = await paymentIntentResponse.json();
+      if (!paymentIntentResponse.ok) {
+        throw new Error(apiErrorMessage(paymentIntentData, "Failed to create payment intent"));
+      }
+
+      const confirmResponse = await fetch(`${apiBase}/applications/${applicationId}/confirm-payment`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ paymentId: `pay_dev_${Date.now()}` }),
+      });
+      const confirmData = await confirmResponse.json();
+      if (!confirmResponse.ok) {
+        throw new Error(apiErrorMessage(confirmData, "Failed to confirm payment"));
+      }
+
+      Alert.alert("Ticket ready", "Application completed and QR ticket issued.");
+      await Promise.all([loadEventDetail(eventId), loadPulse(), loadNotifications()]);
+    } catch (error) {
+      Alert.alert("Application failed", `${error}`);
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   async function markRead(notificationId: string) {
@@ -583,48 +882,214 @@ function AppScreen() {
             </Pressable>
           </View>
         ) : (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Onboarding complete</Text>
-            <Text style={styles.helperText}>Profile: {user?.name || "n/a"}</Text>
-            <Text style={styles.helperText}>School: {user?.school?.name || "n/a"}</Text>
-            <Text style={styles.helperText}>Theme: {themePreference}</Text>
-
-            <View style={styles.notificationsHeader}>
-              <Text style={styles.sectionTitle}>Notification centre</Text>
-              <Text style={styles.badge}>{unreadCount} unread</Text>
+          <>
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Stage 2 discovery</Text>
+              <Text style={styles.helperText}>
+                {user?.name || "User"} · {user?.school?.name || "No school selected"}
+              </Text>
+              <View style={styles.themeRow}>
+                {(["pulse", "events", "friends", "inbox"] as const).map((tab) => (
+                  <Pressable
+                    key={tab}
+                    onPress={() => setActiveTab(tab)}
+                    style={[styles.themeChip, activeTab === tab ? styles.themeChipSelected : undefined]}
+                  >
+                    <Text style={activeTab === tab ? styles.themeChipTextSelected : styles.themeChipText}>
+                      {tab}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
             </View>
 
-            <View style={styles.rowGap}>
-              <Pressable
-                style={styles.secondaryButton}
-                onPress={() => loadNotifications().catch((error) => Alert.alert("Error", `${error}`))}
-              >
-                <Text style={styles.secondaryButtonText}>Refresh notifications</Text>
-              </Pressable>
-              <Pressable style={styles.secondaryButton} onPress={() => markAllRead().catch(() => null)}>
-                <Text style={styles.secondaryButtonText}>Mark all read</Text>
-              </Pressable>
-            </View>
-
-            <View style={styles.notificationList}>
-              {notifications.map((item) => (
-                <View key={item.id} style={styles.notificationItem}>
-                  <Text style={styles.notificationTitle}>{item.title}</Text>
-                  <Text style={styles.notificationBody}>{item.body}</Text>
-                  <Text style={styles.notificationMeta}>
-                    {item.category} | {new Date(item.createdAt).toLocaleString()}
-                  </Text>
-                  {!item.readAt ? (
-                    <Pressable style={styles.inlineButton} onPress={() => markRead(item.id)}>
-                      <Text style={styles.inlineButtonText}>Mark as read</Text>
+            {activeTab === "pulse" ? (
+              <View style={styles.card}>
+                <Text style={styles.cardTitle}>Pulse</Text>
+                <Text style={styles.helperText}>Friends going is private to you.</Text>
+                {pulseSections?.spotlight.map((item) => (
+                  <View key={item.id} style={styles.notificationItem}>
+                    <Text style={styles.notificationTitle}>{item.title}</Text>
+                    <Text style={styles.notificationBody}>
+                      {item.category} · {item.area} · {item.priceLabel}
+                    </Text>
+                    <Text style={styles.notificationMeta}>
+                      {new Date(item.startsAt).toLocaleString()} · {item.friendsGoingCount} friends going
+                    </Text>
+                    <Pressable
+                      style={styles.inlineButton}
+                      onPress={() => loadEventDetail(item.id).catch((error) => Alert.alert("Error", `${error}`))}
+                    >
+                      <Text style={styles.inlineButtonText}>View detail</Text>
                     </Pressable>
-                  ) : (
-                    <Text style={styles.notificationMeta}>Read</Text>
-                  )}
+                  </View>
+                ))}
+                <Text style={styles.sectionTitle}>Friends going</Text>
+                {pulseSections?.friendsGoing.length ? (
+                  pulseSections.friendsGoing.map((item) => (
+                    <View key={`${item.eventId}-${item.friendUserId}`} style={styles.notificationItem}>
+                      <Text style={styles.notificationTitle}>{item.friendName}</Text>
+                      <Text style={styles.notificationBody}>{item.eventTitle}</Text>
+                      <Text style={styles.notificationMeta}>
+                        {item.eventArea} · {new Date(item.startsAt).toLocaleString()}
+                      </Text>
+                    </View>
+                  ))
+                ) : (
+                  <Text style={styles.helperText}>No friend attendance yet.</Text>
+                )}
+              </View>
+            ) : null}
+
+            {activeTab === "events" ? (
+              <View style={styles.card}>
+                <Text style={styles.cardTitle}>Events</Text>
+                <View style={styles.rowGap}>
+                  <Pressable style={styles.secondaryButton} onPress={() => loadEvents().catch(() => null)}>
+                    <Text style={styles.secondaryButtonText}>All events</Text>
+                  </Pressable>
+                  <Pressable style={styles.secondaryButton} onPress={() => loadEvents("music").catch(() => null)}>
+                    <Text style={styles.secondaryButtonText}>Music</Text>
+                  </Pressable>
+                  <Pressable style={styles.secondaryButton} onPress={() => loadEvents("tech").catch(() => null)}>
+                    <Text style={styles.secondaryButtonText}>Tech</Text>
+                  </Pressable>
                 </View>
-              ))}
-            </View>
-          </View>
+                {events.map((event) => (
+                  <View key={event.id} style={styles.notificationItem}>
+                    <Text style={styles.notificationTitle}>{event.title}</Text>
+                    <Text style={styles.notificationBody}>
+                      {event.area} · {event.category} · {event.priceLabel}
+                    </Text>
+                    <Text style={styles.notificationMeta}>{new Date(event.startsAt).toLocaleString()}</Text>
+                    <View style={styles.rowGap}>
+                      <Pressable
+                        style={styles.inlineButton}
+                        onPress={() => loadEventDetail(event.id).catch((error) => Alert.alert("Error", `${error}`))}
+                      >
+                        <Text style={styles.inlineButtonText}>Open</Text>
+                      </Pressable>
+                      <Pressable style={styles.inlineButton} onPress={() => void startApplication(event.id)}>
+                        <Text style={styles.inlineButtonText}>Apply + pay</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                ))}
+                {selectedEvent ? (
+                  <View style={styles.notificationItem}>
+                    <Text style={styles.notificationTitle}>{selectedEvent.event.title}</Text>
+                    <Text style={styles.notificationBody}>{selectedEvent.organiser?.name || "Organiser"}</Text>
+                    <Text style={styles.notificationMeta}>
+                      {selectedEvent.friendsAttendingCount} friends attending
+                    </Text>
+                    {selectedEvent.updates.map((update) => (
+                      <View key={update.id} style={styles.schoolItem}>
+                        <Text style={styles.schoolName}>{update.title}</Text>
+                        <Text style={styles.schoolMeta}>{update.body}</Text>
+                      </View>
+                    ))}
+                    <Text style={styles.notificationMeta}>
+                      Application status: {selectedEvent.application?.status || "not started"}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+            ) : null}
+
+            {activeTab === "friends" ? (
+              <View style={styles.card}>
+                <Text style={styles.cardTitle}>Friends</Text>
+                <Field
+                  label="Find people"
+                  value={discoverQuery}
+                  onChangeText={setDiscoverQuery}
+                  placeholder="Search name"
+                  palette={palette}
+                  styles={styles}
+                />
+                <Pressable style={styles.secondaryButton} onPress={() => searchPeople().catch((error) => Alert.alert("Error", `${error}`))}>
+                  <Text style={styles.secondaryButtonText}>Search</Text>
+                </Pressable>
+                {discoverUsers.map((person) => (
+                  <View key={person.id} style={styles.notificationItem}>
+                    <Text style={styles.notificationTitle}>{person.name}</Text>
+                    <Text style={styles.notificationBody}>
+                      {person.schoolName || "No school"} · {person.friendshipStatus}
+                    </Text>
+                    {person.pendingRequestDirection ? (
+                      <Text style={styles.notificationMeta}>{person.pendingRequestDirection} request pending</Text>
+                    ) : person.friendshipStatus === "public" ? (
+                      <Pressable style={styles.inlineButton} onPress={() => sendFriendRequest(person.id).catch((error) => Alert.alert("Error", `${error}`))}>
+                        <Text style={styles.inlineButtonText}>Add friend</Text>
+                      </Pressable>
+                    ) : null}
+                  </View>
+                ))}
+                <Text style={styles.sectionTitle}>Incoming requests</Text>
+                {incomingRequests.map((item) => (
+                  <View key={item.id} style={styles.notificationItem}>
+                    <Text style={styles.notificationTitle}>{item.fromUserId}</Text>
+                    <View style={styles.rowGap}>
+                      <Pressable style={styles.inlineButton} onPress={() => respondToFriendRequest(item.id, "accept").catch((error) => Alert.alert("Error", `${error}`))}>
+                        <Text style={styles.inlineButtonText}>Accept</Text>
+                      </Pressable>
+                      <Pressable style={styles.inlineButton} onPress={() => respondToFriendRequest(item.id, "reject").catch((error) => Alert.alert("Error", `${error}`))}>
+                        <Text style={styles.inlineButtonText}>Reject</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                ))}
+                <Text style={styles.sectionTitle}>Friends list</Text>
+                {friends.map((friend) => (
+                  <View key={friend.id} style={styles.notificationItem}>
+                    <Text style={styles.notificationTitle}>{friend.name}</Text>
+                    <Text style={styles.notificationMeta}>{friend.school?.name || "No school"}</Text>
+                  </View>
+                ))}
+                {outgoingRequests.length ? (
+                  <Text style={styles.helperText}>Outgoing pending: {outgoingRequests.length}</Text>
+                ) : null}
+              </View>
+            ) : null}
+
+            {activeTab === "inbox" ? (
+              <View style={styles.card}>
+                <View style={styles.notificationsHeader}>
+                  <Text style={styles.sectionTitle}>Notification centre</Text>
+                  <Text style={styles.badge}>{unreadCount} unread</Text>
+                </View>
+                <View style={styles.rowGap}>
+                  <Pressable
+                    style={styles.secondaryButton}
+                    onPress={() => loadNotifications().catch((error) => Alert.alert("Error", `${error}`))}
+                  >
+                    <Text style={styles.secondaryButtonText}>Refresh</Text>
+                  </Pressable>
+                  <Pressable style={styles.secondaryButton} onPress={() => markAllRead().catch(() => null)}>
+                    <Text style={styles.secondaryButtonText}>Mark all read</Text>
+                  </Pressable>
+                </View>
+                <View style={styles.notificationList}>
+                  {notifications.map((item) => (
+                    <View key={item.id} style={styles.notificationItem}>
+                      <Text style={styles.notificationTitle}>{item.title}</Text>
+                      <Text style={styles.notificationBody}>{item.body}</Text>
+                      <Text style={styles.notificationMeta}>
+                        {item.category} | {new Date(item.createdAt).toLocaleString()}
+                      </Text>
+                      {!item.readAt ? (
+                        <Pressable style={styles.inlineButton} onPress={() => markRead(item.id)}>
+                          <Text style={styles.inlineButtonText}>Mark as read</Text>
+                        </Pressable>
+                      ) : (
+                        <Text style={styles.notificationMeta}>Read</Text>
+                      )}
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ) : null}
+          </>
         )}
       </ScrollView>
     </SafeAreaView>

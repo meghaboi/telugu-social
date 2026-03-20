@@ -4,14 +4,13 @@ Open-access Hyderabad youth community platform with onboarding, identity, and ev
 
 ## Current implementation
 
-- Stage 1: implemented (API + mobile shell)
-  - OTP login/signup (dev OTP simulation)
-  - Open access onboarding (no invite gate)
-  - Profile setup with Stage 1 fields: name, DOB (14+), optional photo, interests (min 3), neighbourhood
-  - Hyderabad school index search and self-reported school selection
-  - Terms acceptance capture with policy version tracking
-  - In-app notification centre foundation (list/read/mark-all-read)
-  - Dark mode support with system preference + manual override (system/light/dark)
+- Stage 1: implemented
+- Stage 2: implemented in the app/API shell for local development
+  - Pulse feed, event discovery, event detail, application flow, QR ticket confirmation
+  - Social graph: user discovery, friend requests, friend list, privacy-aware profiles
+  - Minimal landing page API content and organiser intake endpoint
+  - Expanded mobile shell for Pulse, Events, Friends, and Inbox views
+  - API coverage with automated tests for onboarding, events, payments, social graph, and intake
 
 ## Monorepo structure
 
@@ -57,8 +56,9 @@ Mobile API base URL behavior:
 - If `DATABASE_URL` is provided, API uses PostgreSQL (recommended for Azure deployment).
 - If `DATABASE_URL` is absent, API falls back to in-memory storage.
 - Set `USE_IN_MEMORY_STORE=true` to force in-memory mode.
+- PostgreSQL bootstrap now seeds Stage 1 schools plus Stage 2 organisers, events, and event updates.
 
-## Stage 1 API endpoints
+## API endpoints
 
 - `GET /health`
 - `GET /terms/current`
@@ -71,6 +71,22 @@ Mobile API base URL behavior:
 - `GET /notifications`
 - `POST /notifications/read-all`
 - `POST /notifications/:notificationId/read`
+- `GET /pulse`
+- `GET /events`
+- `GET /events/:eventId`
+- `POST /events/:eventId/applications/start`
+- `POST /applications/:applicationId/details`
+- `POST /applications/:applicationId/payment-intent`
+- `POST /applications/:applicationId/confirm-payment`
+- `GET /tickets/:ticketId`
+- `GET /users/discover`
+- `GET /friends`
+- `GET /friends/requests`
+- `POST /friends/requests`
+- `POST /friends/requests/:requestId/respond`
+- `GET /profiles/:userId`
+- `GET /landing/:page`
+- `POST /landing/organiser-intake`
 
 ## Testing
 
