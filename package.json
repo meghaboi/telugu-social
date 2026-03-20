@@ -7,8 +7,13 @@
     "packages/*"
   ],
   "scripts": {
+    "dev": "concurrently \"npm run dev:api\" \"npm run dev:mobile\"",
     "dev:api": "npm --workspace @telugu-social/api run dev",
     "dev:mobile": "npm --workspace @telugu-social/mobile run start",
     "typecheck": "npm -ws run typecheck"
+  },
+  "devDependencies": {
+    "@expo/ngrok": "^4.1.3",
+    "concurrently": "^9.2.1"
   }
 }

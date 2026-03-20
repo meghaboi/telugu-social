@@ -39,12 +39,18 @@ See [docs/STAGES.md](./docs/STAGES.md).
 
 1. Install dependencies:
    - `npm install`
-2. Start API:
-   - `npm run dev:api`
-3. Start mobile app (new terminal):
-   - `npm run dev:mobile`
+2. Start API + mobile together:
+   - `npm run dev`
 
-Default API URL is `http://localhost:4000` and can be edited in the app login screen.
+Or run separately:
+
+- `npm run dev:api`
+- `npm run dev:mobile`
+
+Mobile API base URL behavior:
+
+- App defaults to `https://telugusocial-dev-api-1304.azurewebsites.net`.
+- Override explicitly with `EXPO_PUBLIC_API_BASE_URL` only when needed.
 
 ## Backend persistence mode
 

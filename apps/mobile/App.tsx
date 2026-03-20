@@ -4,7 +4,6 @@ import {
   ActivityIndicator,
   Alert,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -12,6 +11,7 @@ import {
   useColorScheme,
   View,
 } from "react-native";
+import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 type ThemePreference = "system" | "light" | "dark";
 
@@ -114,10 +114,25 @@ const darkPalette: Palette = {
   chipText: "#E5EAF2",
 };
 
-export default function App() {
-  const systemColorScheme = useColorScheme();
+const DEFAULT_API_BASE = "https://telugusocial-dev-api-1304.azurewebsites.net";
 
-  const [apiBase, setApiBase] = useState(process.env.EXPO_PUBLIC_API_BASE_URL || "http://localhost:4000");
+function sanitizeApiBase(url: string) {
+  return url.trim().replace(/\/+$/, "");
+}
+
+function defaultApiBase() {
+  const envApiBase = process.env.EXPO_PUBLIC_API_BASE_URL?.trim();
+  if (envApiBase) {
+    return sanitizeApiBase(envApiBase);
+  }
+  return DEFAULT_API_BASE;
+}
+
+function AppScreen() {
+  const systemColorScheme = useColorScheme();
+  const insets = useSafeAreaInsets();
+
+  const [apiBase] = useState(defaultApiBase());
 
   const [phone, setPhone] = useState("+919900000001");
   const [otpToken, setOtpToken] = useState("");
@@ -392,11 +407,14 @@ export default function App() {
     : "Terms loading...";
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
       <StatusBar style={resolvedTheme === "light" ? "dark" : "light"} />
       {isLoading ? <ActivityIndicator color={palette.textPrimary} style={styles.loader} /> : null}
 
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={[styles.content, { paddingTop: Math.max(12, insets.top * 0.4) }]}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={styles.headerRow}>
           <View>
             <Text style={styles.title}>telugu.social</Text>
@@ -427,14 +445,8 @@ export default function App() {
         {!accessToken ? (
           <View style={styles.card}>
             <Text style={styles.cardTitle}>OTP login / signup</Text>
-            <Field
-              label="API base URL"
-              value={apiBase}
-              onChangeText={setApiBase}
-              placeholder="http://localhost:4000"
-              palette={palette}
-              styles={styles}
-            />
+            <Text style={styles.helperText}>Connected backend: {apiBase}</Text>
+
             <Field
               label="Phone"
               value={phone}
@@ -449,15 +461,7 @@ export default function App() {
 
             {otpToken ? (
               <View style={styles.blockGap}>
-                <Text style={styles.helperText}>Dev OTP: {devOtp || "pending"}</Text>
-                <Field
-                  label="OTP token"
-                  value={otpToken}
-                  onChangeText={setOtpToken}
-                  placeholder="otp_xxx"
-                  palette={palette}
-                  styles={styles}
-                />
+                {__DEV__ ? <Text style={styles.helperText}>Dev OTP: {devOtp || "pending"}</Text> : null}
                 <Field
                   label="OTP"
                   value={otp}
@@ -627,6 +631,14 @@ export default function App() {
   );
 }
 
+export default function App() {
+  return (
+    <SafeAreaProvider>
+      <AppScreen />
+    </SafeAreaProvider>
+  );
+}
+
 function Field({
   label,
   value,
@@ -672,10 +684,12 @@ function createStyles(palette: Palette) {
     },
     headerRow: {
       gap: 8,
+      marginBottom: 2,
     },
     title: {
       color: palette.textPrimary,
-      fontSize: 32,
+      fontSize: 28,
+      lineHeight: 32,
       fontWeight: "900",
       letterSpacing: 0.2,
     },
